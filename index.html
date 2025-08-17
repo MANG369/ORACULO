@@ -122,7 +122,7 @@
         const loader = document.getElementById('loader');
 
         // --- Constantes de la API ---
-        const apiKey = "AIzaSyBiS5IR9Z269ED5PTwbg1yDsChf_rPi5uE"; // Clave de API insertada.
+        const apiKey = "AIzaSyA15rAvBpMrHwO2WcktRwsgJ2r9OFMrssI"; // Clave de API actualizada.
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
         /**
@@ -161,7 +161,12 @@
 
             } catch (error) {
                 console.error('Error al contactar al Oráculo:', error);
-                responseText.textContent = 'Las estrellas están nubladas en este momento. Inténtalo de nuevo más tarde.';
+                // --- Manejo de errores mejorado para dar feedback específico al usuario ---
+                if (error.status === 429) {
+                    responseText.textContent = 'El Oráculo necesita descansar. Has hecho demasiadas preguntas muy rápido. Inténtalo de nuevo en unos minutos.';
+                } else {
+                    responseText.textContent = 'Las estrellas están nubladas en este momento. Inténtalo de nuevo más tarde.';
+                }
             } finally {
                 // --- Restaura la UI a su estado normal ---
                 loader.classList.add('hidden');
@@ -189,29 +194,35 @@
                     });
 
                     if (!response.ok) {
-                        // Si la respuesta no es exitosa, lanza un error para activar el reintento
+                        // --- Lanza un error específico para el límite de tasa (429) ---
+                        if (response.status === 429) {
+                            const error = new Error("Rate limit exceeded.");
+                            error.status = 429;
+                            throw error;
+                        }
                         throw new Error(`Error de la API: ${response.statusText}`);
                     }
 
                     const result = await response.json();
                     
-                    // --- Valida la estructura de la respuesta ---
                     if (result.candidates && result.candidates.length > 0 &&
                         result.candidates[0].content && result.candidates[0].content.parts &&
                         result.candidates[0].content.parts.length > 0) {
                         return result.candidates[0].content.parts[0].text;
                     } else {
-                        // Si la estructura es inesperada, lanza un error
                         console.warn('Respuesta inesperada de la API:', result);
                         throw new Error('La respuesta del Oráculo no pudo ser descifrada.');
                     }
                 } catch (error) {
-                    attempt++;
-                    if (attempt >= maxRetries) {
-                        // Si se alcanza el máximo de reintentos, se rechaza la promesa
+                    // --- Si el error es de límite de tasa, lo lanzamos de nuevo para que el bloque principal lo capture y no reintente ---
+                    if (error.status === 429) {
                         throw error;
                     }
-                    // Espera antes del siguiente reintento, aumentando el tiempo de espera
+
+                    attempt++;
+                    if (attempt >= maxRetries) {
+                        throw error;
+                    }
                     const delay = Math.pow(2, attempt) * 1000;
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
