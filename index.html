@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORACULO</title>
+    <!-- Tailwind CSS para un diseño moderno y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts para una tipografía mística -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos personalizados para complementar Tailwind */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .font-cinzel {
+            font-family: 'Cinzel', serif;
+        }
+        /* Efecto de gradiente animado para el fondo */
+        .animated-gradient {
+            background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #0f0c29);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        /* Estilo para el botón con un brillo sutil */
+        .glowing-btn {
+            box-shadow: 0 0 5px #a855f7, 0 0 10px #a855f7, 0 0 15px #a855f7;
+            transition: all 0.3s ease-in-out;
+        }
+        .glowing-btn:hover {
+            box-shadow: 0 0 10px #c084fc, 0 0 20px #c084fc, 0 0 30px #c084fc;
+        }
+        /* Estilo para el contenedor de la respuesta */
+        #responseContainer {
+            min-height: 100px;
+            transition: opacity 0.5s ease-in-out;
+        }
+        /* Animación de carga (spinner) */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #a855f7;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Animación para el logo */
+        #logo {
+            animation: pulsate 4s ease-in-out infinite;
+        }
+        @keyframes pulsate {
+            0% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 4px #c084fc);
+            }
+            50% {
+                transform: scale(1.05);
+                filter: drop-shadow(0 0 12px #c084fc);
+            }
+            100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 4px #c084fc);
+            }
+        }
+    </style>
+</head>
+<body class="animated-gradient text-white min-h-screen flex items-center justify-center p-4">
+
+    <main class="w-full max-w-2xl mx-auto bg-black bg-opacity-40 backdrop-blur-md p-6 sm:p-8 rounded-2xl shadow-2xl border border-purple-500/20">
+        
+        <!-- Encabezado con el título y el nuevo logo -->
+        <header class="text-center mb-6">
+            <!-- Logo SVG del Ojo Místico -->
+            <svg id="logo" class="mx-auto h-20 w-20 text-purple-300 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 4.5C7 4.5 2.73 7.61 1 12C2.73 16.39 7 19.5 12 19.5C17 19.5 21.27 16.39 23 12C21.27 7.61 17 4.5 12 4.5Z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <h1 class="font-cinzel text-4xl sm:text-5xl font-bold tracking-widest text-purple-300">
+                ORACULO
+            </h1>
+            <p class="text-purple-400 mt-2 text-sm sm:text-base">Consulta las estrellas, pregunta al éter.</p>
+        </header>
+
+        <!-- Sección de la pregunta -->
+        <div class="space-y-4">
+            <label for="questionInput" class="sr-only">Tu Pregunta</label>
+            <textarea id="questionInput" rows="3" class="w-full bg-gray-900/50 border-2 border-purple-700/50 rounded-lg p-3 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 outline-none transition duration-300 placeholder-gray-400 resize-none" placeholder="Escribe tu pregunta al universo..."></textarea>
+            
+            <button id="askButton" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 glowing-btn text-lg">
+                Preguntar al Oráculo
+            </button>
+        </div>
+
+        <!-- Sección de la respuesta -->
+        <div class="mt-8">
+            <h2 class="font-cinzel text-2xl text-purple-300 mb-4 text-center">La Respuesta del Oráculo</h2>
+            <div id="responseContainer" class="bg-gray-900/50 border border-purple-700/30 rounded-lg p-4 text-center flex items-center justify-center">
+                <p id="responseText" class="text-purple-200 italic">El silencio aguarda tu consulta...</p>
+                <div id="loader" class="loader hidden"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- Referencias a los elementos del DOM ---
+        const questionInput = document.getElementById('questionInput');
+        const askButton = document.getElementById('askButton');
+        const responseText = document.getElementById('responseText');
+        const responseContainer = document.getElementById('responseContainer');
+        const loader = document.getElementById('loader');
+
+        // --- Constantes de la API ---
+        const apiKey = ""; // La clave de API se inyectará en el entorno de ejecución. No la modifiques.
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        /**
+         * Función para manejar el clic en el botón de preguntar.
+         */
+        askButton.addEventListener('click', async () => {
+            const question = questionInput.value.trim();
+
+            if (!question) {
+                responseText.textContent = "El Oráculo no puede responder a una pregunta vacía. Escribe tu inquietud.";
+                return;
+            }
+
+            // --- Prepara la UI para la respuesta ---
+            responseText.classList.add('hidden');
+            loader.classList.remove('hidden');
+            askButton.disabled = true;
+            askButton.textContent = 'Consultando...';
+            responseContainer.style.opacity = '0.5';
+
+            try {
+                // --- Construye el prompt para la IA ---
+                const prompt = `Actúa como un oráculo místico y sabio llamado "ORACULO". Tu conocimiento es vasto como el cosmos. Responde a la siguiente pregunta con una respuesta corta (máximo 3 frases), enigmática, poética y profunda. La pregunta es: "${question}"`;
+
+                const payload = {
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }]
+                };
+                
+                // --- Llama a la API de Gemini con reintentos (exponential backoff) ---
+                const generatedText = await callGeminiWithRetry(payload);
+
+                // --- Muestra la respuesta en la UI ---
+                responseText.textContent = generatedText;
+
+            } catch (error) {
+                console.error('Error al contactar al Oráculo:', error);
+                responseText.textContent = 'Las estrellas están nubladas en este momento. Inténtalo de nuevo más tarde.';
+            } finally {
+                // --- Restaura la UI a su estado normal ---
+                loader.classList.add('hidden');
+                responseText.classList.remove('hidden');
+                responseContainer.style.opacity = '1';
+                askButton.disabled = false;
+                askButton.textContent = 'Preguntar al Oráculo';
+            }
+        });
+        
+        /**
+         * Llama a la API de Gemini con una estrategia de reintentos con exponential backoff.
+         * @param {object} payload - El cuerpo de la solicitud para la API.
+         * @param {number} maxRetries - El número máximo de reintentos.
+         * @returns {Promise<string>} El texto generado por el modelo.
+         */
+        async function callGeminiWithRetry(payload, maxRetries = 3) {
+            let attempt = 0;
+            while (attempt < maxRetries) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        // Si la respuesta no es exitosa, lanza un error para activar el reintento
+                        throw new Error(`Error de la API: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    // --- Valida la estructura de la respuesta ---
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        // Si la estructura es inesperada, lanza un error
+                        console.warn('Respuesta inesperada de la API:', result);
+                        throw new Error('La respuesta del Oráculo no pudo ser descifrada.');
+                    }
+                } catch (error) {
+                    attempt++;
+                    if (attempt >= maxRetries) {
+                        // Si se alcanza el máximo de reintentos, se rechaza la promesa
+                        throw error;
+                    }
+                    // Espera antes del siguiente reintento, aumentando el tiempo de espera
+                    const delay = Math.pow(2, attempt) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+    </script>
+</body>
+</html>
